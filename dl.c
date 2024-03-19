@@ -162,35 +162,33 @@ int main()
         saved_errno = errno;
 
 
-        if (d)
-        {
+        if (d) {
 
-                while (((dir = readdir(d)) != NULL))
-                {
-                                l = strlen(dir->d_name);
+                while (((dir = readdir(d)) != NULL)) {
+                        l = strlen(dir->d_name);
 
-                                if((dir->d_type==DT_REG)){
+                        if((dir->d_type==DT_REG)){
 
-                                        strcpy((d_files + i), dir->d_name);
-                                        i += l;
-                                        d_files[i] = '\0';
-                                        i++;
-                                        f_count++;
-                                
-                                }
-                                else if ((dir->d_type==DT_DIR)) {
-                                        if(strcmp((dir->d_name), ".") != 0) {
-                                                strcpy((d_dirs + j), dir->d_name);
-                                                j += l;
-                                                d_dirs[j] = '\0';
-                                                j++;
-                                                d_count++;
-
-
-                                        }
+                                strcpy((d_files + i), dir->d_name);
+                                i += l;
+                                d_files[i] = '\0';
+                                i++;
+                                f_count++;
+                        
+                        }
+                        else if ((dir->d_type==DT_DIR)) {
+                                if(strcmp((dir->d_name), ".") != 0) {
+                                        strcpy((d_dirs + j), dir->d_name);
+                                        j += l;
+                                        d_dirs[j] = '\0';
+                                        j++;
+                                        d_count++;
 
 
                                 }
+
+
+                        }
 
                 }
                 i = 0;
