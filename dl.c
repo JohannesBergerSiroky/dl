@@ -115,17 +115,17 @@ char* get_gname(int gid) {
         return grp->gr_name;       
 }
 
-int main()
+int main(int args, char** argv)
 {
 
 
         DIR         *d;
-        //int a = 0;
-        int b = 0;
-        //int c = 0;
+
+        int         b = 0;
         int         i = 0;
         int         l = 0;
         int         j = 0;
+        int         v = 0;
         int         f_count = 0;
         int         d_count = 0;
         int         count = 0;
@@ -136,7 +136,6 @@ int main()
         char        d_files[4096];
         char        d_dirs[2048];
         char        temp_path2[128];
-        //char        temp_placeholder[16];
         struct stat *file_information;
         int         saved_errno;
         int         f_stat;
@@ -159,6 +158,23 @@ int main()
         saved_errno = errno;
 
 
+        if(args > 2) {
+                printf("\nUsage: dl, dl --help, dl -h or dl -v.\n");
+                exit(1);
+        }
+        if (args == 2) {
+                if ((strcmp(argv[1], "-h") == 0) || (strcmp(argv[1], "--help") == 0)) {
+                        printf("\nType dl -v for full file names and full directory names.\nOtherwise it will show a maximum of twenty letters from\na file name and from a directory name.\n");
+                        exit(2);
+                }
+                else if ((strcmp(argv[1], "-v") == 0)) {
+                        v = 1;
+                }
+                else {
+                        printf("\nUsage: dl, dl -h, dl --help or dl -v\n");
+                        exit(3);
+                }
+        }
 
         if (d) {
 
@@ -247,7 +263,7 @@ int main()
                 else {
                         b = strlen(d_dirs + l);
 
-                        if (b > 20) {
+                        if ((b > 20) && (v == 0)) {
                                 d_dirs[l + 20] = '\0';
                         }
  
@@ -307,7 +323,7 @@ int main()
 
                 else {
                         b = strlen(d_files + l);
-                        if (b > 20) {
+                        if ((b > 20) && (v == 0)) {
                                 d_files[l + 20] = '\0';
 
                                 /* for (a = (b - 1); c == 0; a--) {
