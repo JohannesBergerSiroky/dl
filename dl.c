@@ -10,14 +10,138 @@
 #include <string.h>
 #include <pwd.h>
 #include <grp.h>
+#include <stdbool.h>
 
 
 
-#define RESET   "\033[0m"
+/* #define RESET   "\033[0m"
 #define GREEN   "\033[32m"   
 #define YELLOW  "\033[33m"     
 #define BOLDGREEN   "\033[1m\033[32m"     
-#define BOLDYELLOW  "\033[1m\033[33m" 
+#define BOLDYELLOW  "\033[1m\033[33m" */
+bool have_used_color;
+
+
+
+struct color_code
+{
+        int cc_length;
+        char* color_code_string;
+};
+
+static struct color_code color_code_placeholder[] =
+        {
+                {sizeof("\033[") - 1, "\033["},   // left
+                {sizeof("m") - 1, "m"},           // right
+                {0, (char*)0},                    // End color
+                {sizeof("0") - 1, "0"},           // color reset
+                {0, (char*)0},                    // normal color
+                {0, (char*)0},                    // File default
+                {sizeof("32") - 1, "32"},         // green
+                {sizeof("33") - 1, "33"},         // yellow
+                {sizeof("01;32") - 1, "01;32"},   // bold green
+                {sizeof("01;33") - 1, "01;33"},   // bold yellow
+                {0, (char*)0},                    // Missing file
+                {0, (char*)0},                    // orphaned symlink
+                {0, (char*)0},                    // disabled by default
+                {0, (char*)0},                    // disabled by default
+                {sizeof("\033[K") - 1, "\033[K"}, // clear to end of line
+
+        };
+
+enum color_picker
+        {
+                LEFT,
+                RIGHT,
+                END_COLOR,
+                COLOR_RESET,
+                COLOR_NORMAL,
+                FILE_DEFAULT,
+                GREEN,
+                YELLOW,
+                BOLD_GREEN,
+                BOLD_YELLOW,
+                FILE_MISSING,
+                ORPHANED_SYMLINK,
+                DISABLEDBD,
+                DISABLED_BY_DEFAULT,
+                CLTEOL
+        };
+
+void init_have_used_color();
+static bool has_color(enum color_picker indicator);
+void set_color_default();
+static bool
+write_color (const struct color_code *clrcode);
+void prepare_color_output();
+void write_color_indicator(const struct color_code* ind);
+
+void init_have_used_color()
+{
+        have_used_color = false;
+}
+
+static bool has_color(enum color_picker indicator)
+{
+        int len = color_code_placeholder[indicator].cc_length;
+        char* str = color_code_placeholder[indicator].color_code_string;
+        if(len == 0) {
+                return false;
+        }
+        else if(strcmp("0", str) == 0) {
+                return false;
+        }
+        else if(strcmp("00", str) == 0) {
+                return false;
+        }
+        else {
+                return true;
+        }
+}
+
+void set_color_default()
+{
+        write_color_indicator (&color_code_placeholder[LEFT]);
+        write_color_indicator (&color_code_placeholder[RIGHT]);
+}
+
+static bool
+write_color (const struct color_code* clrcode)
+{
+        if (clrcode) {
+                /* Avoid attribute combinations */
+                if (has_color (COLOR_NORMAL))
+                        set_color_default();
+
+                write_color_indicator (&color_code_placeholder[LEFT]);
+                write_color_indicator (clrcode);
+                write_color_indicator (&color_code_placeholder[RIGHT]);
+        }
+
+        return clrcode != (struct color_code*)0;
+}
+
+void prepare_color_output()
+{
+        if(&color_code_placeholder[END_COLOR] != (struct color_code*)0) {
+                write_color_indicator(&color_code_placeholder[END_COLOR]);
+        }
+        else {
+                write_color_indicator(&color_code_placeholder[LEFT]);
+                write_color_indicator(&color_code_placeholder[COLOR_RESET]);
+                write_color_indicator(&color_code_placeholder[RIGHT]);
+        }
+}
+
+void write_color_indicator(const struct color_code* ind)
+{
+        if(have_used_color == false) {
+                have_used_color = true;
+                prepare_color_output();
+        }
+        fwrite(ind->color_code_string, ind->cc_length, 1, stdout);
+}
+
 
 
 
@@ -55,31 +179,22 @@ char* parse_file_permissions(int stmode)
                         //check if the file has execute permissions
                         if(strcmp((file_permissions + 2), "x") == 0) {
                                 f_permissions[2] = 's';
-
                         }
                         else {
                                 f_permissions[2] = 'S';
-
                         }
-
-
                 }
                 // test for sgid
                 if(((stmode >> 9) & 7) == 2) {
                         //check if the file has execute permissions
                         if(strcmp((f_permissions + 6), "x") == 0) {
                                 f_permissions[6] = 's';
-
                         }
                         else {
                                 f_permissions[6] = 'S';
 
                         }
-
-
                 }
-
-
         }
         // directory
         else if (test == 4) {
@@ -117,10 +232,7 @@ char* get_gname(int gid) {
 
 int main(int args, char** argv)
 {
-
-
         DIR         *d;
-
         int         b = 0;
         int         i = 0;
         int         l = 0;
@@ -175,6 +287,8 @@ int main(int args, char** argv)
                         exit(3);
                 }
         }
+
+        init_have_used_color();
 
         if (d) {
 
@@ -232,9 +346,17 @@ int main(int args, char** argv)
         char temp[48];
         for(int a = 0; a<48; a++)
                 temp[a] = '\0';
-    
-        printf(BOLDGREEN "\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
-        printf(RESET);
+        bool test = write_color(&color_code_placeholder[BOLD_GREEN]);
+        if(!test) {
+                exit(5);
+        }
+        else {
+                color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("01;33") - 1;
+                color_code_placeholder[COLOR_NORMAL].color_code_string = "01;33";
+        } 
+
+        printf("\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
+        //set_color_default();
         file_information = (struct stat*)calloc(count, sizeof(struct stat));
         // allocate some members in the struct stat 
         for(int a = 0; a<1024; a++)
@@ -244,6 +366,15 @@ int main(int args, char** argv)
         unsigned char* statptr = (unsigned char*)file_information;
         for(int a = 0; a < (count*(sizeof(struct stat))); a++)
                 *(statptr + a) = 0;
+
+        test = write_color(&color_code_placeholder[GREEN]);
+        if(!test) {
+                exit(6);
+        }
+        else {
+                color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("32") - 1;
+                color_code_placeholder[COLOR_NORMAL].color_code_string = "32";
+        }
         while(i < d_count) {
                 strcpy(temp_path, "./");
                 ptr = strcat(temp_path, (d_dirs + l));
@@ -281,7 +412,8 @@ int main(int args, char** argv)
                         strcpy(unamegname, uname);
                         strcat(unamegname, "/");
                         strcat(unamegname, gname);
-                        printf(GREEN "%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
+
+                        printf("%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
                         l += b;
                         l++;
                         i++;
@@ -309,8 +441,24 @@ int main(int args, char** argv)
          for(int a = 0; a<48; a++)
                 unamegname[a] = '\0';
         strcpy(unamegname, "Username/Groupname");
-        printf(BOLDYELLOW "\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
-
+        test = write_color(&color_code_placeholder[BOLD_YELLOW]);
+        if(!test) {
+                exit(7);
+        }
+        else {
+                color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("01;33") - 1;
+                color_code_placeholder[COLOR_NORMAL].color_code_string = "01;33";
+        }
+        printf("\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
+        set_color_default();
+        /*test = write_color(&color_code_placeholder[COLOR_RESET]);
+        if(!test) {
+                exit(8);
+        }
+        else {
+                color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("0") - 1;
+                strcpy(color_code_placeholder[COLOR_NORMAL].color_code_string, "0";
+        }*/
         while(i < f_count) {
                 strcpy(temp_path, "./");
                 ptr = strcat(temp_path, d_files + l);
@@ -323,39 +471,30 @@ int main(int args, char** argv)
 
                 else {
                         b = strlen(d_files + l);
+
                         if ((b > 20) && (v == 0)) {
                                 d_files[l + 20] = '\0';
-
-                                /* for (a = (b - 1); c == 0; a--) {
-                                       if(strcmp((d_files + l + a), ".") == 0)
-                                                c = 1;
-                                }  
-
-                                strcpy((temp_placeholder), (d_files + l + a));
-                                temp_placeholder[b - a] = '\0';
-                                b = strlen(temp_placeholder);
-                                c = 20 - b - 1;
-                                d_files[l + c] = '.';
-                                strcpy((d_files + l + c + 1), temp_placeholder);
-                                d_files[l + 20] = '\0';
-                                c = 0; */
                         }
 
                         strcpy(name, (d_files + l));
                         snprintf(usergroupid, sizeof(usergroupid), "%d", (file_information + i)->st_uid);
                         strcat(usergroupid, " ");
+
                         for(int a = 0; a<48; a++)
                                 temp[a] = '\0';
+
                         snprintf(temp, sizeof(temp), "%d", (file_information + i)->st_gid);
                         strcat(usergroupid, temp);
+
                         for(int a = 0; a<48; a++)
                                 unamegname[a] = '\0';
+
                         uname = get_uname((file_information + i)->st_uid);
                         gname = get_gname((file_information + i)->st_gid);
                         strcpy(unamegname, uname);
                         strcat(unamegname, "/");
                         strcat(unamegname, gname);
-                        printf(RESET "%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
+                        printf("%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
                         l+= b;
                         l++;
                         i++;
