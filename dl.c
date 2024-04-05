@@ -94,12 +94,7 @@ char* parse_file_permissions(int stmode)
                                 f_permissions[10] = 'T';
 
                         }
-
-
                 }        
-
-
-
         }
 
         return f_permissions;
@@ -111,16 +106,13 @@ char* get_uname(int uid) {
 
         struct passwd *pws;
         pws = getpwuid(uid);
-        return pws->pw_name;
-        
+        return pws->pw_name;        
 }
 
 char* get_gname(int gid) {
-
         struct group *grp;
         grp = getgrgid(gid);
-        return grp->gr_name;
-        
+        return grp->gr_name;       
 }
 
 int main()
@@ -128,18 +120,23 @@ int main()
 
 
         DIR         *d;
+        //int a = 0;
+        int b = 0;
+        //int c = 0;
         int         i = 0;
         int         l = 0;
         int         j = 0;
         int         f_count = 0;
         int         d_count = 0;
         int         count = 0;
+
         struct dirent* dir;
         char        dir_path[1024] = ".";
         char        temp_path[1024];
         char        d_files[4096];
         char        d_dirs[2048];
         char        temp_path2[128];
+        //char        temp_placeholder[16];
         struct stat *file_information;
         int         saved_errno;
         int         f_stat;
@@ -162,32 +159,28 @@ int main()
         saved_errno = errno;
 
 
+
         if (d) {
 
                 while (((dir = readdir(d)) != NULL)) {
                         l = strlen(dir->d_name);
 
                         if((dir->d_type==DT_REG)){
-
                                 strcpy((d_files + i), dir->d_name);
                                 i += l;
                                 d_files[i] = '\0';
                                 i++;
-                                f_count++;
-                        
+                                f_count++;                        
                         }
                         else if ((dir->d_type==DT_DIR)) {
                                 if(strcmp((dir->d_name), ".") != 0) {
                                         strcpy((d_dirs + j), dir->d_name);
-                                        j += l;
+                                        j += l;    
                                         d_dirs[j] = '\0';
-                                        j++;
-                                        d_count++;
-
-
                                 }
 
-
+                                        j++;
+                                        d_count++;
                         }
 
                 }
@@ -195,14 +188,8 @@ int main()
                 j = 0;
                 l = 0;
                 count = d_count + f_count;
-
-
                 closedir(d);
         }
-
-
-
-
 
         else {
                 printf("Could not open the directory\n");
@@ -230,11 +217,7 @@ int main()
         for(int a = 0; a<48; a++)
                 temp[a] = '\0';
     
-
-
-
-
-        printf(BOLDGREEN "\n%-20s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
+        printf(BOLDGREEN "\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
         printf(RESET);
         file_information = (struct stat*)calloc(count, sizeof(struct stat));
         // allocate some members in the struct stat 
@@ -262,32 +245,38 @@ int main()
 
                 }
                 else {
+                        b = strlen(d_dirs + l);
+
+                        if (b > 20) {
+                                d_dirs[l + 20] = '\0';
+                        }
  
                         strcpy(name, (d_dirs + l));
                         snprintf(usergroupid, sizeof(usergroupid), "%d", (file_information + i)->st_uid);
                         strcat(usergroupid, " ");
                         snprintf(temp, sizeof(temp), "%d", (file_information + i)->st_gid);
                         strcat(usergroupid, temp);
+
                         for(int a = 0; a<48; a++)
                                 unamegname[a] = '\0';
+
                         uname = get_uname((file_information + i)->st_uid);
                         gname = get_gname((file_information + i)->st_gid);
                         strcpy(unamegname, uname);
                         strcat(unamegname, "/");
                         strcat(unamegname, gname);
-                        printf(GREEN "%-20s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
-                        l+= strlen(d_dirs + l);
+                        printf(GREEN "%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
+                        l += b;
                         l++;
                         i++;
                 }
+
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
 
-
-
         }
-        j = i;
 
+        j = i;
         i = 0;
         l = 0;
 
@@ -304,9 +293,7 @@ int main()
          for(int a = 0; a<48; a++)
                 unamegname[a] = '\0';
         strcpy(unamegname, "Username/Groupname");
-
-
-        printf(BOLDYELLOW "\n%-20s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
+        printf(BOLDYELLOW "\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
 
         while(i < f_count) {
                 strcpy(temp_path, "./");
@@ -319,6 +306,25 @@ int main()
                 }
 
                 else {
+                        b = strlen(d_files + l);
+                        if (b > 20) {
+                                d_files[l + 20] = '\0';
+
+                                /* for (a = (b - 1); c == 0; a--) {
+                                       if(strcmp((d_files + l + a), ".") == 0)
+                                                c = 1;
+                                }  
+
+                                strcpy((temp_placeholder), (d_files + l + a));
+                                temp_placeholder[b - a] = '\0';
+                                b = strlen(temp_placeholder);
+                                c = 20 - b - 1;
+                                d_files[l + c] = '.';
+                                strcpy((d_files + l + c + 1), temp_placeholder);
+                                d_files[l + 20] = '\0';
+                                c = 0; */
+                        }
+
                         strcpy(name, (d_files + l));
                         snprintf(usergroupid, sizeof(usergroupid), "%d", (file_information + i)->st_uid);
                         strcat(usergroupid, " ");
@@ -333,20 +339,15 @@ int main()
                         strcpy(unamegname, uname);
                         strcat(unamegname, "/");
                         strcat(unamegname, gname);
-                        printf(RESET "%-20s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
-                        l+= strlen(d_files + l);
+                        printf(RESET "%-21s%-20s%-20s%s\n", name, parse_file_permissions((file_information + i)->st_mode), usergroupid, unamegname);
+                        l+= b;
                         l++;
                         i++;
                 }
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
-
         }
-
         
-
-
-
         free(file_information);
         return 0;
         
