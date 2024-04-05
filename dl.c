@@ -13,22 +13,13 @@
 #include <stdbool.h>
 
 
-
-/* #define RESET   "\033[0m"
-#define GREEN   "\033[32m"   
-#define YELLOW  "\033[33m"     
-#define BOLDGREEN   "\033[1m\033[32m"     
-#define BOLDYELLOW  "\033[1m\033[33m" */
 bool have_used_color;
-
-
 
 struct color_code
 {
         int cc_length;
         char* color_code_string;
 };
-
 static struct color_code color_code_placeholder[] =
         {
                 {sizeof("\033[") - 1, "\033["},   // left
@@ -68,6 +59,9 @@ enum color_picker
                 CLTEOL
         };
 
+char table[9][4] = {{'_','_','_', '\0'}, {'_','_','x','\0'},{'_','w','_','\0'},{'_','w','x','\0'},{'r','_','_','\0'},{'r','_','x','\0'},{'r','w','_','\0'},{'r','w','x','\0'},{'\0','\0','\0','\0'}};
+char file_permissions[32];
+
 void init_have_used_color();
 static bool has_color(enum color_picker indicator);
 void set_color_default();
@@ -75,6 +69,9 @@ static bool
 write_color (const struct color_code *clrcode);
 void prepare_color_output();
 void write_color_indicator(const struct color_code* ind);
+char* get_grame(int gid);
+char* get_uname(int uid);
+char* parse_file_permissions(int stmode);
 
 void init_have_used_color()
 {
@@ -142,15 +139,6 @@ void write_color_indicator(const struct color_code* ind)
         fwrite(ind->color_code_string, ind->cc_length, 1, stdout);
 }
 
-
-
-
-char table[9][4] = {{'_','_','_', '\0'}, {'_','_','x','\0'},{'_','w','_','\0'},{'_','w','x','\0'},{'r','_','_','\0'},{'r','_','x','\0'},{'r','w','_','\0'},{'r','w','x','\0'},{'\0','\0','\0','\0'}};
-char file_permissions[32];
-
-char* get_grame(int gid);
-char* get_uname(int uid);
-char* parse_file_permissions(int stmode);
 char* parse_file_permissions(int stmode)
 {
 
@@ -215,8 +203,6 @@ char* parse_file_permissions(int stmode)
         return f_permissions;
 }
 
-
-
 char* get_uname(int uid) {
 
         struct passwd *pws;
@@ -255,7 +241,6 @@ int main(int args, char** argv)
         char        *ptr = temp_path2;
         char        *uname;
         char        *gname;
-
 
         d_files[0] = '\0';
         d_files[4095] = '\0';
@@ -356,8 +341,8 @@ int main(int args, char** argv)
         } 
 
         printf("\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
-        //set_color_default();
         file_information = (struct stat*)calloc(count, sizeof(struct stat));
+
         // allocate some members in the struct stat 
         for(int a = 0; a<1024; a++)
                 temp_path[a] = '\0';
@@ -428,7 +413,6 @@ int main(int args, char** argv)
         i = 0;
         l = 0;
 
-
         for(int a = 0; a<48; a++)
                 name[a] = '\0';
         strcpy(name, "Files");        
@@ -451,14 +435,7 @@ int main(int args, char** argv)
         }
         printf("\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
         set_color_default();
-        /*test = write_color(&color_code_placeholder[COLOR_RESET]);
-        if(!test) {
-                exit(8);
-        }
-        else {
-                color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("0") - 1;
-                strcpy(color_code_placeholder[COLOR_NORMAL].color_code_string, "0";
-        }*/
+
         while(i < f_count) {
                 strcpy(temp_path, "./");
                 ptr = strcat(temp_path, d_files + l);
@@ -507,6 +484,3 @@ int main(int args, char** argv)
         return 0;
         
 }
-
-
-
