@@ -11,9 +11,18 @@
 #include <pwd.h>
 #include <grp.h>
 #include <stdbool.h>
+#include <signal.h>
 
 
 bool have_used_color;
+sigset_t signals_received;
+static sig_atomic_t volatile interrupt_sig;
+static sig_atomic_t volatile stop_sgnl_count;
+
+#ifndef SA_NOCLDSTP
+#define SA_NOCLDSTP 0
+#endif
+#define ARRAY_CARDINALITY(Array) (sizeof (Array) / sizeof *(Array)) 
 
 struct color_code
 {
@@ -62,7 +71,7 @@ enum color_picker
 char table[9][4] = {{'_','_','_', '\0'}, {'_','_','x','\0'},{'_','w','_','\0'},{'_','w','x','\0'},{'r','_','_','\0'},{'r','_','x','\0'},{'r','w','_','\0'},{'r','w','x','\0'},{'\0','\0','\0','\0'}};
 char file_permissions[32];
 
-void init_have_used_color();
+void init_some_variables();
 static bool has_color(enum color_picker indicator);
 void set_color_default();
 static bool
@@ -72,10 +81,173 @@ void write_color_indicator(const struct color_code* ind);
 char* get_grame(int gid);
 char* get_uname(int uid);
 char* parse_file_permissions(int stmode);
+void init_signal_handling(bool active);
+static void s_normalhandler(int sgnl);
+static void s_stophandler (int sgnl);
+static void dl_handle_signals(void);
+void restore_signal(void);
+void init_signal(void);
 
-void init_have_used_color()
+void restore_signal(void)
+{
+        init_signal_handling(false);
+}
+void init_signal(void)
+{
+        init_signal_handling(true);
+}
+
+static void dl_handle_signals(void)
+{
+        while (interrupt_sig || stop_sgnl_count) {
+                int sgnl;
+                int s_stop;
+                sigset_t oldset;
+
+                if(have_used_color) {
+                        set_color_default();
+                        fflush(stdout);
+                }
+
+                sigprocmask(SIG_BLOCK, &signals_received, &oldset);
+                sgnl = interrupt_sig;
+                s_stop = stop_sgnl_count;
+
+                if(s_stop) {
+                        stop_sgnl_count = s_stop - 1;
+                        sgnl = SIGSTOP;
+                }
+                else {
+                        signal(sgnl, SIG_DFL);
+                }
+                /*Stop the program */
+                raise(sgnl);
+                sigprocmask(SIG_SETMASK, &oldset, NULL);        
+        }
+}
+
+static void s_normalhandler(int sgnl)
+{
+        if(!SA_NOCLDSTP) {
+                signal(sgnl, SIG_IGN);
+        }
+        if(! interrupt_sig) {
+                interrupt_sig = sgnl;
+        }
+
+}
+
+static void s_stophandler(int sgnl)
+{
+        if(!SA_NOCLDSTP) {
+                signal (sgnl, s_stophandler);
+        }
+        if(interrupt_sig) {
+                interrupt_sig = sgnl;
+        }
+}
+
+/* This function is largley taken from parts of the code of ls.c in coreutils.*/
+void init_signal_handling(bool active)
+{
+
+        static int possible_signals [] = {
+        SIGTERM, SIGINT, 
+        SIGHUP,  SIGQUIT,
+        SIGPIPE, SIGALRM,
+        SIGTSTP,
+
+        #ifdef SIGPOLL
+                SIGPOLL,
+        #endif
+
+        #ifdef SIGPROF
+                SIGPROF,
+        #endif
+
+        #ifdef SIGVTALRM
+                SIGVTALRM,
+        #endif
+
+        #ifdef SIGXCPU
+                SIGXCPU,
+        #endif
+
+        #ifdef SIGCFSZ
+                SIGXFSZ,
+        #endif
+        };
+
+        //size_t size_possible_signals = sizeof(possible_signals)/sizeof(possible_signals[0]);
+        enum {possible_signals_size = ARRAY_CARDINALITY(possible_signals)};
+        #if ! SA_NOCLDSTP
+        static bool signals_recvd[possible_signals_size];
+        #endif
+        if(active) {
+                for(int i = 0; i < possible_signals_size;i++) {
+                        signals_recvd[i] = 0;
+                }
+                #if SA_NOCLDSTOP
+                        struct sigaction s_act;
+                        sigemptyset(&signals_received);
+                        
+                        for (int i = 0; i < possible_signals_size;i++) {
+                                sigaction(possible_signals[i], NULL, &s_act);
+                                if (s_act.sa_handler != SIG_IGN) {
+                                        sigaddset(&signals_received, possible_signals[i]);
+                                }
+                        }
+
+                        s_act.sa_mask = signals_received;
+                        s_act.sa_flags = SA_RESTART;
+
+                        for(int i = 0; i < possible_signals_size; i++) {
+                                if(sigismember(&signals_received, possible_signals[i])) {
+                                        if(possible_signals[i] == SIGTSTP) {
+                                                s_act.sa_handler = s_stophandler;
+                                        }
+                                        else {
+                                                s_act.sa_handler = s_normalhandler;
+                                        }
+                                        sigaction(possible_signals[i], &s_act, NULL);
+                                }
+                        }
+
+                #else
+
+                        for (int i = 0; i < possible_signals_size;i++) {
+                                signals_recvd[i] = signal(possible_signals[i], SIG_IGN) != SIG_IGN;
+                                /* If it's not SIG_IGN */
+                                if(signals_received[i]) {
+                                        signal(possible_signals[i], possible_signals[i] == SIGTSTP ? s_stophandler : s_normalhandler);
+                                        siginterrupt(possible_signals[i], 0);
+                                }
+                        }
+                #endif
+        }
+
+        else {
+               #if SA_NOCLDTSTP
+                       for (int i = 0; i < possible_signals_size;i++) {
+                               if(sigismember(&signals_received, possible_signals[i])) {
+                                        signal(possible_signals[i], SIG_DFL);
+                                }
+                       }
+                #else
+                        for(int i = 0; i < possible_signals_size; i++) {
+                                if(signals_recvd[i]) {
+                                        signal(possible_signals[i], SIG_DFL);
+                                }
+                        }
+                #endif
+        }
+}
+ 
+void init_some_variables()
 {
         have_used_color = false;
+        interrupt_sig = 0;
+        stop_sgnl_count = 0;
 }
 
 static bool has_color(enum color_picker indicator)
@@ -200,6 +372,8 @@ char* parse_file_permissions(int stmode)
                 }        
         }
 
+        dl_handle_signals();
+
         return f_permissions;
 }
 
@@ -219,6 +393,7 @@ char* get_gname(int gid) {
 int main(int args, char** argv)
 {
         DIR         *d;
+        bool        test = false;
         int         b = 0;
         int         i = 0;
         int         l = 0;
@@ -273,7 +448,7 @@ int main(int args, char** argv)
                 }
         }
 
-        init_have_used_color();
+        init_some_variables();
 
         if (d) {
 
@@ -297,6 +472,7 @@ int main(int args, char** argv)
                                         j++;
                                         d_count++;
                         }
+                        dl_handle_signals();
 
                 }
                 i = 0;
@@ -331,7 +507,7 @@ int main(int args, char** argv)
         char temp[48];
         for(int a = 0; a<48; a++)
                 temp[a] = '\0';
-        bool test = write_color(&color_code_placeholder[BOLD_GREEN]);
+        test = write_color(&color_code_placeholder[BOLD_GREEN]);
         if(!test) {
                 exit(5);
         }
@@ -402,6 +578,7 @@ int main(int args, char** argv)
                         l += b;
                         l++;
                         i++;
+                        dl_handle_signals();
                 }
 
                 for(int a = 0; a<1024; a++)
@@ -475,9 +652,23 @@ int main(int args, char** argv)
                         l+= b;
                         l++;
                         i++;
+                        dl_handle_signals();
                 }
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
+        }
+
+        if(have_used_color && test) {
+                fflush(stdout);
+                restore_signal();
+
+                for(int i = stop_sgnl_count; i; i--) {
+                        raise(SIGSTOP);
+                }
+
+                i = interrupt_sig;
+                if(i)
+                        raise(i);
         }
         
         free(file_information);
