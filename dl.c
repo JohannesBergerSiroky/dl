@@ -306,6 +306,8 @@ void write_color_indicator(const struct color_code* ind)
 {
         if(have_used_color == false) {
                 have_used_color = true;
+                if(0 <= STDOUT_FILENO)
+                        init_signal();
                 prepare_color_output();
         }
         fwrite(ind->color_code_string, ind->cc_length, 1, stdout);
