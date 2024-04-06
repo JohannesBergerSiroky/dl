@@ -3,7 +3,7 @@
 This program is an experimental alternative to ls.
 So far it includes file and directory listings.
 It also includes user names, groups and all 
-file permissions.
+file permissions. It is supposed to be safe and it handles signals.
 
 ![An example image](dl_images/Screenshot_from_2024-03-24_14-37-50_edited.png)
 
