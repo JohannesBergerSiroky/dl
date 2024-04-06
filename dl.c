@@ -46,7 +46,6 @@ static struct color_code color_code_placeholder[] =
                 {0, (char*)0},                    // disabled by default
                 {0, (char*)0},                    // disabled by default
                 {sizeof("\033[K") - 1, "\033[K"}, // clear to end of line
-
         };
 
 enum color_picker
@@ -212,7 +211,6 @@ void init_signal_handling(bool active)
                                         sigaction(possible_signals[i], &s_act, NULL);
                                 }
                         }
-
                 #else
 
                         for (int i = 0; i < possible_signals_size;i++) {
@@ -354,7 +352,6 @@ char* parse_file_permissions(int stmode)
                         }
                         else {
                                 f_permissions[6] = 'S';
-
                         }
                 }
         }
@@ -365,17 +362,14 @@ char* parse_file_permissions(int stmode)
                         //check if the file has execute permissions
                         if(strcmp((f_permissions + 10), "x") == 0) {
                                 f_permissions[10] = 't';
-
                         }
                         else {
                                 f_permissions[10] = 'T';
-
                         }
                 }        
         }
 
         dl_handle_signals();
-
         return f_permissions;
 }
 
@@ -404,33 +398,35 @@ int main(int args, char** argv)
         int         f_count = 0;
         int         d_count = 0;
         int         count = 0;
+        int         saved_errno;
+        int         f_stat;
 
-        struct dirent* dir;
         char        dir_path[1024] = ".";
         char        temp_path[1024];
         char        d_files[4096];
         char        d_dirs[2048];
-        char        temp_path2[128];
-        struct stat *file_information;
-        int         saved_errno;
-        int         f_stat;
-        
+        char        temp_path2[128];        
         char        *ptr = temp_path2;
         char        *uname;
         char        *gname;
+
+        struct dirent* dir;
+        struct stat *file_information;
 
         d_files[0] = '\0';
         d_files[4095] = '\0';
         d_dirs[0] = '\0';
         d_dirs[2047] = '\0';
+
         for(int a = 39; a<1024; a++)
                 dir_path[a] = '\0';
+
         temp_path[0] = '\0';
         temp_path[1023] = '\0';
+
         errno = 0;
         d = opendir(dir_path);
         saved_errno = errno;
-
 
         if(args > 2) {
                 printf("\nUsage: dl, dl --help, dl -h or dl -v.\n");
@@ -453,7 +449,6 @@ int main(int args, char** argv)
         init_some_variables();
 
         if (d) {
-
                 while (((dir = readdir(d)) != NULL)) {
                         l = strlen(dir->d_name);
 
@@ -470,12 +465,10 @@ int main(int args, char** argv)
                                         j += l;    
                                         d_dirs[j] = '\0';
                                 }
-
                                         j++;
                                         d_count++;
                         }
                         dl_handle_signals();
-
                 }
                 i = 0;
                 j = 0;
@@ -488,8 +481,8 @@ int main(int args, char** argv)
                 printf("Could not open the directory\n");
                 closedir(d);
                 return saved_errno;
-
         }
+
         char name[48];
         for(int a = 0; a<48; a++)
                 name[a] = '\0';
@@ -509,6 +502,7 @@ int main(int args, char** argv)
         char temp[48];
         for(int a = 0; a<48; a++)
                 temp[a] = '\0';
+
         test = write_color(&color_code_placeholder[BOLD_GREEN]);
         if(!test) {
                 exit(5);
@@ -552,7 +546,6 @@ int main(int args, char** argv)
                         l+= strlen(d_dirs + l);
                         l++;
                         i++;
-
                 }
                 else {
                         b = strlen(d_dirs + l);
@@ -585,7 +578,6 @@ int main(int args, char** argv)
 
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
-
         }
 
         j = i;
@@ -674,6 +666,5 @@ int main(int args, char** argv)
         }
         
         free(file_information);
-        return 0;
-        
+        return 0;       
 }
