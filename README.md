@@ -17,7 +17,7 @@ You can build this in Linux by typing:
 After this you can place the file in usr/local/bin for example.
 Dl will list file names and directory names and truncate the length of them
 if the names are bigger than 20 characters.
-If you don't want this then you can type:
+If you don't want that you can type:
 
 `dl -v`
 
