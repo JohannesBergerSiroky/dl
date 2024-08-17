@@ -47,7 +47,6 @@ static struct color_code color_code_placeholder[] =
                 {0, (char*)0},                    // disabled by default
                 {sizeof("\033[K") - 1, "\033[K"}, // clear to end of line
         };
-
 enum color_picker
         {
                 LEFT,
@@ -69,7 +68,6 @@ enum color_picker
 
 char table[9][4] = {{'_','_','_', '\0'}, {'_','_','x','\0'},{'_','w','_','\0'},{'_','w','x','\0'},{'r','_','_','\0'},{'r','_','x','\0'},{'r','w','_','\0'},{'r','w','x','\0'},{'\0','\0','\0','\0'}};
 char file_permissions[32];
-
 void init_some_variables();
 static bool has_color(enum color_picker indicator);
 void set_color_default();
@@ -119,6 +117,7 @@ static void dl_handle_signals(void)
                 else {
                         signal(sgnl, SIG_DFL);
                 }
+
                 /*Stop the program */
                 raise(sgnl);
                 sigprocmask(SIG_SETMASK, &oldset, NULL);        
@@ -130,10 +129,10 @@ static void s_normalhandler(int sgnl)
         if(!SA_NOCLDSTP) {
                 signal(sgnl, SIG_IGN);
         }
+
         if(! interrupt_sig) {
                 interrupt_sig = sgnl;
         }
-
 }
 
 static void s_stophandler(int sgnl)
@@ -149,7 +148,6 @@ static void s_stophandler(int sgnl)
 /* This function is largley taken from parts of the code of ls.c in coreutils.*/
 void init_signal_handling(bool active)
 {
-
         static int possible_signals [] = {
         SIGTERM, SIGINT, 
         SIGHUP,  SIGQUIT,
@@ -159,19 +157,15 @@ void init_signal_handling(bool active)
         #ifdef SIGPOLL
                 SIGPOLL,
         #endif
-
         #ifdef SIGPROF
                 SIGPROF,
         #endif
-
         #ifdef SIGVTALRM
                 SIGVTALRM,
         #endif
-
         #ifdef SIGXCPU
                 SIGXCPU,
         #endif
-
         #ifdef SIGCFSZ
                 SIGXFSZ,
         #endif
@@ -186,6 +180,7 @@ void init_signal_handling(bool active)
                 for(int i = 0; i < possible_signals_size;i++) {
                         signals_recvd[i] = 0;
                 }
+
                 #if SA_NOCLDSTOP
                         struct sigaction s_act;
                         sigemptyset(&signals_received);
@@ -201,7 +196,9 @@ void init_signal_handling(bool active)
                         s_act.sa_flags = SA_RESTART;
 
                         for(int i = 0; i < possible_signals_size; i++) {
+
                                 if(sigismember(&signals_received, possible_signals[i])) {
+
                                         if(possible_signals[i] == SIGTSTP) {
                                                 s_act.sa_handler = s_stophandler;
                                         }
@@ -216,6 +213,7 @@ void init_signal_handling(bool active)
                         for (int i = 0; i < possible_signals_size;i++) {
                                 signals_recvd[i] = signal(possible_signals[i], SIG_IGN) != SIG_IGN;
                                 /* If it's not SIG_IGN */
+
                                 if(signals_received[i]) {
                                         signal(possible_signals[i], possible_signals[i] == SIGTSTP ? s_stophandler : s_normalhandler);
                                         siginterrupt(possible_signals[i], 0);
@@ -223,15 +221,17 @@ void init_signal_handling(bool active)
                         }
                 #endif
         }
-
         else {
                #if SA_NOCLDTSTP
+
                        for (int i = 0; i < possible_signals_size;i++) {
+
                                if(sigismember(&signals_received, possible_signals[i])) {
                                         signal(possible_signals[i], SIG_DFL);
                                 }
                        }
                 #else
+
                         for(int i = 0; i < possible_signals_size; i++) {
                                 if(signals_recvd[i]) {
                                         signal(possible_signals[i], SIG_DFL);
@@ -252,6 +252,7 @@ static bool has_color(enum color_picker indicator)
 {
         int len = color_code_placeholder[indicator].cc_length;
         char* str = color_code_placeholder[indicator].color_code_string;
+
         if(len == 0) {
                 return false;
         }
@@ -276,6 +277,7 @@ static bool
 write_color (const struct color_code* clrcode)
 {
         if (clrcode) {
+
                 /* Avoid attribute combinations */
                 if (has_color (COLOR_NORMAL))
                         set_color_default();
@@ -304,8 +306,10 @@ void write_color_indicator(const struct color_code* ind)
 {
         if(have_used_color == false) {
                 have_used_color = true;
+
                 if(0 <= STDOUT_FILENO)
                         init_signal();
+
                 prepare_color_output();
         }
         fwrite(ind->color_code_string, ind->cc_length, 1, stdout);
@@ -313,16 +317,16 @@ void write_color_indicator(const struct color_code* ind)
 
 char* parse_file_permissions(int stmode)
 {
-
         for(int a = 0; a<32; a++)
                 file_permissions[a] = '\0';
+
         char* f_permissions;
         int test;
+
         // First the program will test for owner permissions
         test = ((stmode >> 6) & 7);
         f_permissions = strcat(file_permissions, *(table + test));
         f_permissions = strcat(file_permissions, "|");
- 
         // Second the program will test for group permissions
         test = ((stmode >> 3) & 7);
         f_permissions = strcat(file_permissions, *(table + test));
@@ -332,10 +336,13 @@ char* parse_file_permissions(int stmode)
         f_permissions = strcat(file_permissions, *(table + test));
         // check for suid, sgid and the sticky bit
         test = (((stmode >> 12) & 63));
+
         // A regular file
         if(test == 8) {
+
                 // test for suid
                 if(((stmode >> 9) & 7) == 4) {
+
                         //check if the file has execute permissions
                         if(strcmp((file_permissions + 2), "x") == 0) {
                                 f_permissions[2] = 's';
@@ -344,6 +351,7 @@ char* parse_file_permissions(int stmode)
                                 f_permissions[2] = 'S';
                         }
                 }
+
                 // test for sgid
                 if(((stmode >> 9) & 7) == 2) {
                         //check if the file has execute permissions
@@ -373,14 +381,15 @@ char* parse_file_permissions(int stmode)
         return f_permissions;
 }
 
-char* get_uname(int uid) {
-
+char* get_uname(int uid) 
+{
         struct passwd *pws;
         pws = getpwuid(uid);
         return pws->pw_name;        
 }
 
-char* get_gname(int gid) {
+char* get_gname(int gid) 
+{
         struct group *grp;
         grp = getgrgid(gid);
         return grp->gr_name;       
@@ -400,7 +409,6 @@ int main(int args, char** argv)
         int         count = 0;
         int         saved_errno;
         int         f_stat;
-
         char        dir_path[1024] = ".";
         char        temp_path[1024];
         char        d_files[4096];
@@ -409,7 +417,6 @@ int main(int args, char** argv)
         char        *ptr = temp_path2;
         char        *uname;
         char        *gname;
-
         struct dirent* dir;
         struct stat *file_information;
 
@@ -423,7 +430,6 @@ int main(int args, char** argv)
 
         temp_path[0] = '\0';
         temp_path[1023] = '\0';
-
         errno = 0;
         d = opendir(dir_path);
         saved_errno = errno;
@@ -432,7 +438,9 @@ int main(int args, char** argv)
                 printf("\nUsage: dl, dl --help, dl -h or dl -v.\n");
                 exit(1);
         }
+
         if (args == 2) {
+
                 if ((strcmp(argv[1], "-h") == 0) || (strcmp(argv[1], "--help") == 0)) {
                         printf("\nType dl -v for full file names and full directory names.\nOtherwise it will show a maximum of twenty letters from\na file name and from a directory name.\n");
                         exit(2);
@@ -449,6 +457,7 @@ int main(int args, char** argv)
         init_some_variables();
 
         if (d) {
+
                 while (((dir = readdir(d)) != NULL)) {
                         l = strlen(dir->d_name);
 
@@ -460,6 +469,7 @@ int main(int args, char** argv)
                                 f_count++;                        
                         }
                         else if ((dir->d_type==DT_DIR)) {
+
                                 if(strcmp((dir->d_name), ".") != 0) {
                                         strcpy((d_dirs + j), dir->d_name);
                                         j += l;    
@@ -468,15 +478,16 @@ int main(int args, char** argv)
                                         j++;
                                         d_count++;
                         }
+
                         dl_handle_signals();
                 }
+
                 i = 0;
                 j = 0;
                 l = 0;
                 count = d_count + f_count;
                 closedir(d);
         }
-
         else {
                 printf("Could not open the directory\n");
                 closedir(d);
@@ -484,26 +495,36 @@ int main(int args, char** argv)
         }
 
         char name[48];
+
         for(int a = 0; a<48; a++)
                 name[a] = '\0';
+
         strcpy(name, "Directories");        
         char permissions[48];
+
         for(int a = 0; a<48; a++)
                 permissions[a] = '\0';
+
         strcpy(permissions, "Permissions");
         char usergroupid[48];
+
         for(int a = 0; a<48; a++)
                 usergroupid[a] = '\0';
+
         strcpy(usergroupid, "User/Group id");
         char unamegname[48];
+
         for(int a = 0; a<48; a++)
                 unamegname[a] = '\0';
+
         strcpy(unamegname, "Username/Groupname");
         char temp[48];
+
         for(int a = 0; a<48; a++)
                 temp[a] = '\0';
 
         test = write_color(&color_code_placeholder[BOLD_GREEN]);
+
         if(!test) {
                 exit(5);
         }
@@ -518,13 +539,17 @@ int main(int args, char** argv)
         // allocate some members in the struct stat 
         for(int a = 0; a<1024; a++)
                 temp_path[a] = '\0';
+
         for(int a = 0; a<128; a++)
                 temp_path2[a] = '\0';
+
         unsigned char* statptr = (unsigned char*)file_information;
+
         for(int a = 0; a < (count*(sizeof(struct stat))); a++)
                 *(statptr + a) = 0;
 
         test = write_color(&color_code_placeholder[GREEN]);
+
         if(!test) {
                 exit(6);
         }
@@ -532,16 +557,17 @@ int main(int args, char** argv)
                 color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("32") - 1;
                 color_code_placeholder[COLOR_NORMAL].color_code_string = "32";
         }
+
         while(i < d_count) {
                 strcpy(temp_path, "./");
                 ptr = strcat(temp_path, (d_dirs + l));
                 strcpy(temp_path, ptr);
+
                 if((f_stat = stat(temp_path, (file_information + i))) == -1 ) {
                         free(file_information);
                         perror("stat");
                         exit(EXIT_FAILURE);
                 }
-
                 else if ((strcmp((d_dirs + l),"..") == 0)) {
                         l+= strlen(d_dirs + l);
                         l++;
@@ -578,6 +604,7 @@ int main(int args, char** argv)
 
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
+
         }
 
         j = i;
@@ -586,17 +613,25 @@ int main(int args, char** argv)
 
         for(int a = 0; a<48; a++)
                 name[a] = '\0';
-        strcpy(name, "Files");        
+
+        strcpy(name, "Files");   
+     
         for(int a = 0; a<48; a++)
                 permissions[a] = '\0';
+
         strcpy(permissions, "Permissions");
+
         for(int a = 0; a<48; a++)
                 usergroupid[a] = '\0';
+
         strcpy(usergroupid, "User/Group id");
+
          for(int a = 0; a<48; a++)
                 unamegname[a] = '\0';
+
         strcpy(unamegname, "Username/Groupname");
         test = write_color(&color_code_placeholder[BOLD_YELLOW]);
+
         if(!test) {
                 exit(7);
         }
@@ -604,6 +639,7 @@ int main(int args, char** argv)
                 color_code_placeholder[COLOR_NORMAL].cc_length = sizeof("01;33") - 1;
                 color_code_placeholder[COLOR_NORMAL].color_code_string = "01;33";
         }
+
         printf("\n%-21s%-20s%-20s%s\n", name, permissions, usergroupid, unamegname);
         set_color_default();
 
@@ -611,12 +647,12 @@ int main(int args, char** argv)
                 strcpy(temp_path, "./");
                 ptr = strcat(temp_path, d_files + l);
                 strcpy(temp_path, ptr);
+
                 if((f_stat = stat(temp_path, (struct stat*)(file_information + i))) == -1) {
                         free(file_information);
                         perror("stat");
                         exit(EXIT_FAILURE);
                 }
-
                 else {
                         b = strlen(d_files + l);
 
@@ -648,6 +684,7 @@ int main(int args, char** argv)
                         i++;
                         dl_handle_signals();
                 }
+
                 for(int a = 0; a<1024; a++)
                         temp_path[a] = '\0';
         }
@@ -661,6 +698,7 @@ int main(int args, char** argv)
                 }
 
                 i = interrupt_sig;
+
                 if(i)
                         raise(i);
         }
